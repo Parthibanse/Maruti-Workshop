@@ -62,7 +62,7 @@ def main():
         # Display filtered data
         if not filtered_df.empty:
             st.write("### Nearest Workshops")
-            st.dataframe(filtered_df[["latitude", "longitude", "channel", "body shop", "state", "distance_km"]])
+            st.dataframe(filtered_df)
         else:
             st.warning("No results found for the selected filters.")
     else:
