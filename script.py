@@ -25,8 +25,8 @@ if missing_columns:
 # Function to find nearest workshops based on lat/long
 def get_nearest_workshops(user_lat, user_long, df, num_results=5):
     df = df.copy()
-    df["distance"] = df.apply(lambda row: geodesic((user_lat, user_long), (row["latitude"], row["longitude"])).kilometers, axis=1)
-    return df.nsmallest(num_results, "distance")
+    df["distance_km"] = df.apply(lambda row: geodesic((user_lat, user_long), (row["latitude"], row["longitude"])).kilometers, axis=1)
+    return df.nsmallest(num_results, "distance_km")
 
 # Streamlit UI
 def main():
@@ -62,7 +62,7 @@ def main():
         # Display filtered data
         if not filtered_df.empty:
             st.write("### Nearest Workshops")
-            st.dataframe(filtered_df.drop(columns=["distance"], errors='ignore'))
+            st.dataframe(filtered_df[["latitude", "longitude", "channel", "body shop", "state", "distance_km"]])
         else:
             st.warning("No results found for the selected filters.")
     else:
