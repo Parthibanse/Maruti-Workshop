@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 from geopy.distance import geodesic
 
 # Load the dataset
@@ -15,20 +16,16 @@ except Exception as e:
     st.stop()
 
 # Check if required columns exist
-required_columns = ["pincode", "channel", "body shop", "state", "latitude", "longitude"]
+required_columns = ["latitude", "longitude", "channel", "body shop", "state"]
 missing_columns = [col for col in required_columns if col not in df.columns]
 if missing_columns:
     st.error(f"Missing columns in the dataset: {', '.join(missing_columns)}")
     st.stop()
 
-# Function to find nearest workshops using latitude and longitude
-def get_nearest_workshops(pincode, df, num_results=5):
-    user_location = df[df["pincode"].astype(str) == str(pincode)][["latitude", "longitude"]].values
-    if user_location.size == 0:
-        return df.head(num_results)  # Return default results if pincode not found
-    user_location = tuple(user_location[0])
-    
-    df["distance"] = df.apply(lambda row: geodesic(user_location, (row["latitude"], row["longitude"])).km, axis=1)
+# Function to find nearest workshops based on lat/long
+def get_nearest_workshops(user_lat, user_long, df, num_results=5):
+    df = df.copy()
+    df["distance"] = df.apply(lambda row: geodesic((user_lat, user_long), (row["latitude"], row["longitude"])).kilometers, axis=1)
     return df.nsmallest(num_results, "distance")
 
 # Streamlit UI
@@ -39,8 +36,9 @@ def main():
         st.warning("No data available. Please check the uploaded file.")
         return
     
-    # Search by Pincode
-    pincode = st.text_input("Enter Pincode:")
+    # Search by Latitude & Longitude
+    user_lat = st.number_input("Enter Latitude:", format="%0.6f")
+    user_long = st.number_input("Enter Longitude:", format="%0.6f")
     
     # Filters
     channels = df["channel"].dropna().unique().tolist()
@@ -52,22 +50,23 @@ def main():
     state = st.selectbox("Select State:", ["All"] + states)
     
     # Filter data based on inputs
-    filtered_df = df.copy()
-    if pincode:
-        filtered_df = get_nearest_workshops(pincode, df)
-    if channel != "All":
-        filtered_df = filtered_df[filtered_df["channel"] == channel]
-    if body_shop != "All":
-        filtered_df = filtered_df[filtered_df["body shop"] == body_shop]
-    if state != "All":
-        filtered_df = filtered_df[filtered_df["state"] == state]
-    
-    # Display filtered data
-    if not filtered_df.empty:
-        st.write("### Filtered Workshops")
-        st.dataframe(filtered_df.drop(columns=["distance"], errors='ignore'))
+    if user_lat and user_long:
+        filtered_df = get_nearest_workshops(user_lat, user_long, df)
+        if channel != "All":
+            filtered_df = filtered_df[filtered_df["channel"] == channel]
+        if body_shop != "All":
+            filtered_df = filtered_df[filtered_df["body shop"] == body_shop]
+        if state != "All":
+            filtered_df = filtered_df[filtered_df["state"] == state]
+        
+        # Display filtered data
+        if not filtered_df.empty:
+            st.write("### Nearest Workshops")
+            st.dataframe(filtered_df.drop(columns=["distance"], errors='ignore'))
+        else:
+            st.warning("No results found for the selected filters.")
     else:
-        st.warning("No results found for the selected filters.")
+        st.warning("Please enter valid Latitude and Longitude.")
 
 if __name__ == "__main__":
     main()
