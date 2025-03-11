@@ -30,7 +30,7 @@ def get_nearest_workshops(user_lat, user_long, df, num_results=5):
 
 # Streamlit UI
 def main():
-    st.title("Workshop Dashboard")
+    st.title("MSIL Nearest Workshop")
     
     if df.empty:
         st.warning("No data available. Please check the uploaded file.")
