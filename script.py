@@ -21,15 +21,15 @@ if missing_columns:
     st.error(f"Missing columns in the dataset: {', '.join(missing_columns)}")
     st.stop()
 
-# Function to find nearest workshops based on lat-long
+# Function to find nearest workshops using latitude and longitude
 def get_nearest_workshops(pincode, df, num_results=5):
-    try:
-        user_location = df[df["pincode"].astype(str) == str(pincode)][["latitude", "longitude"]].values[0]
-    except IndexError:
-        return df.head(num_results)  # Return first few rows if pincode not found
+    user_location = df[df["pincode"].astype(str) == str(pincode)][["latitude", "longitude"]].values
+    if user_location.size == 0:
+        return df.head(num_results)  # Return default results if pincode not found
+    user_location = tuple(user_location[0])
     
     df["distance"] = df.apply(lambda row: geodesic(user_location, (row["latitude"], row["longitude"])).km, axis=1)
-    return df.sort_values(by="distance").head(num_results)
+    return df.nsmallest(num_results, "distance")
 
 # Streamlit UI
 def main():
@@ -65,7 +65,7 @@ def main():
     # Display filtered data
     if not filtered_df.empty:
         st.write("### Filtered Workshops")
-        st.dataframe(filtered_df.drop(columns=["distance"]))
+        st.dataframe(filtered_df.drop(columns=["distance"], errors='ignore'))
     else:
         st.warning("No results found for the selected filters.")
 
