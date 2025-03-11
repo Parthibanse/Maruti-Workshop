@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from geopy.distance import geodesic
 
 # Load the dataset
 FILE_PATH = "Workshop details.xlsx"
@@ -14,18 +15,21 @@ except Exception as e:
     st.stop()
 
 # Check if required columns exist
-required_columns = ["pincode", "channel", "body shop", "state"]
+required_columns = ["pincode", "channel", "body shop", "state", "latitude", "longitude"]
 missing_columns = [col for col in required_columns if col not in df.columns]
 if missing_columns:
     st.error(f"Missing columns in the dataset: {', '.join(missing_columns)}")
     st.stop()
 
-# Function to find nearest pincodes based on the first five digits
-def get_nearest_pincodes(pincode, df, num_results=5):
-    df["pincode"] = df["pincode"].astype(str)
-    pincode_prefix = str(pincode)[:5]  # Get first five digits of pincode
-    nearest_df = df[df["pincode"].str.startswith(pincode_prefix)]
-    return nearest_df.head(num_results) if not nearest_df.empty else df.head(num_results)
+# Function to find nearest workshops based on lat-long
+def get_nearest_workshops(pincode, df, num_results=5):
+    try:
+        user_location = df[df["pincode"].astype(str) == str(pincode)][["latitude", "longitude"]].values[0]
+    except IndexError:
+        return df.head(num_results)  # Return first few rows if pincode not found
+    
+    df["distance"] = df.apply(lambda row: geodesic(user_location, (row["latitude"], row["longitude"])).km, axis=1)
+    return df.sort_values(by="distance").head(num_results)
 
 # Streamlit UI
 def main():
@@ -50,7 +54,7 @@ def main():
     # Filter data based on inputs
     filtered_df = df.copy()
     if pincode:
-        filtered_df = get_nearest_pincodes(pincode, df)
+        filtered_df = get_nearest_workshops(pincode, df)
     if channel != "All":
         filtered_df = filtered_df[filtered_df["channel"] == channel]
     if body_shop != "All":
@@ -61,7 +65,7 @@ def main():
     # Display filtered data
     if not filtered_df.empty:
         st.write("### Filtered Workshops")
-        st.dataframe(filtered_df)
+        st.dataframe(filtered_df.drop(columns=["distance"]))
     else:
         st.warning("No results found for the selected filters.")
 
