@@ -28,6 +28,25 @@ def get_nearest_workshops(user_lat, user_long, df, num_results=5):
     df["distance_km"] = df.apply(lambda row: geodesic((user_lat, user_long), (row["latitude"], row["longitude"])).kilometers, axis=1)
     return df.nsmallest(num_results, "distance_km")
 
+# G2G Cost Calculator
+def g2g_cost_calculator(km, service_type):
+    rates = {
+        "COCO-UWL": (0, 24.04), "COCO-FBT": (0, 29.32),
+        "ASP-UWL": (1600, 17), "ASP-FBT": (1800, 20)
+    }
+    
+    if service_type not in rates:
+        return "Invalid Service Type"
+    
+    basic_rate, per_km = rates[service_type]
+    
+    if "ASP" in service_type and km > 40:
+        total_cost = basic_rate + ((km - 40) * per_km)
+    else:
+        total_cost = km * per_km  # COCO has no basic rate
+    
+    return total_cost
+
 # Streamlit UI
 def main():
     st.title("MSIL Nearest Workshop")
@@ -35,6 +54,17 @@ def main():
     if df.empty:
         st.warning("No data available. Please check the uploaded file.")
         return
+    
+    # Sidebar Calculators
+    st.sidebar.title("📌 Calculators")
+    
+    # G2G Cost Calculator
+    st.sidebar.subheader("🚗 G2G Cost Calculator")
+    service_type = st.sidebar.selectbox("Select Service Type:", ["COCO-UWL", "COCO-FBT", "ASP-UWL", "ASP-FBT"])
+    km_input = st.sidebar.number_input("Enter Total Distance (KM):", min_value=0, step=1)
+    if st.sidebar.button("Calculate G2G Cost"):
+        g2g_cost = g2g_cost_calculator(km_input, service_type)
+        st.sidebar.success(f"Total Cost: ₹{g2g_cost:.2f}")
     
     # Search by Latitude & Longitude
     user_lat = st.number_input("Enter Latitude:", format="%0.6f")
